@@ -2,13 +2,21 @@
 
 App web personal (para usar en el celular) que:
 
-1. **Propone 3 menús semanales** con IA (Claude): 2 recetas que comparten ingredientes y suman 5 toppers (lunes a viernes).
-2. Muestra por propuesta: **valor nutricional** por topper (y % de tu meta diaria), **costo aprox.**, **tiempo de cocina** y fotos de referencia.
+1. **Propone 3 menús semanales** con tu app de Claude (sin API de pago): 2 recetas que comparten ingredientes y suman 5 toppers (lunes a viernes).
+2. Muestra por propuesta: **valor nutricional** por topper (y % de tu meta diaria), **costo aprox.**, **tiempo de cocina** y enlace a fotos de referencia.
 3. Genera la **lista del súper** por sección y tienda (Sam's, Aurrerá, Abastos), descontando lo que ya tienes en casa, con checklist y botón para compartir.
 4. Da un **plan de cocina del domingo** paso a paso, cómo guardar (refri/congelador) y cómo recalentar.
 5. **Calendario de toppers** con recordatorio de pasar al refri lo que está congelado.
 6. **Calificación de recetas** (la IA se inspira en las que te gustan y evita las que no).
 7. **Conteo de ahorro** vs. comer fuera.
+
+## Cómo se generan las recetas (gratis)
+
+La app no usa ninguna API de pago:
+
+1. En **Planear**, "Copiar instrucciones" arma un mensaje con tu perfil, metas, calificaciones, el catálogo de ingredientes y el formato de respuesta.
+2. Lo pegas en [claude.ai](https://claude.ai/new) (web o app del celular).
+3. Copias la respuesta (un bloque JSON) y la pegas de vuelta en la app, que la valida y la muestra.
 
 ## Cómo calcula los números
 
@@ -22,16 +30,9 @@ Los datos (perfil, semana, calificaciones, ahorro) se guardan en el navegador de
 
 ```bash
 npm install
-cp .env.example .env.local   # y pon tu ANTHROPIC_API_KEY
 npm run dev
 ```
 
-## Publicar en Vercel (gratis)
+## Publicar (Netlify o Vercel, gratis)
 
-1. Entra a [vercel.com](https://vercel.com), inicia sesión con GitHub e importa este repo.
-2. En **Environment Variables** agrega:
-   - `ANTHROPIC_API_KEY` — de [console.anthropic.com](https://console.anthropic.com) (necesitas cargar saldo; cada generación de 3 propuestas cuesta del orden de unos pocos pesos).
-   - `PEXELS_API_KEY` *(opcional)* — de [pexels.com/api](https://www.pexels.com/api/) para mostrar fotos dentro de la app. Sin ella, la app muestra un enlace a Google Imágenes.
-3. Deploy. Abre la URL en el celular y usa "Agregar a pantalla de inicio".
-
-> La URL queda pública: cualquiera que la tenga podría generar propuestas con tu API key. Para uso personal basta con no compartirla; si quieres, se puede agregar una contraseña simple.
+Importa el repo en Netlify o Vercel y despliega. No necesita variables de entorno: todas las páginas son estáticas.

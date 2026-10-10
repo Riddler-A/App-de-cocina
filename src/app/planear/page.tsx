@@ -5,6 +5,7 @@ import { useState } from "react";
 import { TarjetaPropuesta } from "@/components/TarjetaPropuesta";
 import { useCalificaciones, useDespensa, usePerfil, usePersistente, useSemana } from "@/lib/almacen";
 import { calcularMetas } from "@/lib/calculos";
+import { armarInstrucciones, leerRespuesta } from "@/lib/instrucciones";
 import type { Propuesta } from "@/lib/tipos";
 
 const SIN_PROPUESTAS: Propuesta[] = [];
@@ -17,35 +18,45 @@ export default function Planear() {
   const [, setSemana] = useSemana();
   const [propuestas, setPropuestas] = usePersistente<Propuesta[]>("propuestas", SIN_PROPUESTAS);
   const [pedido, setPedido] = useState("");
-  const [cargando, setCargando] = useState(false);
+  const [copiado, setCopiado] = useState(false);
+  const [respuesta, setRespuesta] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [avisos, setAvisos] = useState<string[]>([]);
 
-  async function generar() {
-    setCargando(true);
-    setError(null);
+  async function copiarInstrucciones() {
     const metas = calcularMetas(perfil);
-    const recientes = calificaciones.slice(-6).map((c) => c.nombre);
+    const texto = armarInstrucciones({
+      pesoKg: perfil.pesoKg,
+      kcal: metas.kcal,
+      proteina: metas.proteina,
+      presupuestoMin: perfil.presupuestoMin,
+      presupuestoMax: perfil.presupuestoMax,
+      comidasFrias: perfil.comidasFrias,
+      notas: perfil.notas,
+      meGustan: calificaciones.filter((c) => c.estrellas >= 4).map((c) => c.nombre),
+      noMeGustan: calificaciones.filter((c) => c.estrellas <= 2).map((c) => c.nombre),
+      recientes: calificaciones.slice(-6).map((c) => c.nombre),
+      pedido,
+    });
     try {
-      const res = await fetch("/api/propuestas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          perfil,
-          metas,
-          meGustan: calificaciones.filter((c) => c.estrellas >= 4).map((c) => c.nombre),
-          noMeGustan: calificaciones.filter((c) => c.estrellas <= 2).map((c) => c.nombre),
-          recientes,
-          pedido,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Algo salió mal");
-      setPropuestas(data.propuestas);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Algo salió mal");
-    } finally {
-      setCargando(false);
+      await navigator.clipboard.writeText(texto);
+      setCopiado(true);
+    } catch {
+      setError("No pude copiar al portapapeles. Intenta de nuevo.");
     }
+  }
+
+  function cargar() {
+    const r = leerRespuesta(respuesta);
+    if (!r.ok) {
+      setError(r.error);
+      return;
+    }
+    setError(null);
+    setAvisos(r.avisos);
+    setPropuestas(r.propuestas);
+    setRespuesta("");
+    setCopiado(false);
   }
 
   function elegir(p: Propuesta) {
@@ -57,11 +68,12 @@ export default function Planear() {
     <div className="space-y-5">
       <header>
         <h1 className="text-2xl font-bold">Planear la semana</h1>
-        <p className="text-sm text-suave">3 menús de 2 recetas para 5 toppers. Elige el que más se te antoje.</p>
+        <p className="text-sm text-suave">3 menús de 2 recetas para 5 toppers, generados con tu app de Claude.</p>
       </header>
 
-      <div className="tarjeta space-y-3">
-        <label className="block text-sm font-medium" htmlFor="pedido">
+      <section className="tarjeta space-y-3">
+        <h2 className="font-semibold">1. Copia las instrucciones</h2>
+        <label className="block text-sm text-suave" htmlFor="pedido">
           ¿Algún antojo o condición esta semana? (opcional)
         </label>
         <input
@@ -71,11 +83,42 @@ export default function Planear() {
           value={pedido}
           onChange={(e) => setPedido(e.target.value)}
         />
-        <button className="boton w-full" onClick={generar} disabled={cargando}>
-          {cargando ? "Pensando recetas… (1–2 min)" : propuestas.length ? "Generar otras 3" : "Generar propuestas"}
+        <button className="boton w-full" onClick={copiarInstrucciones}>
+          {copiado ? "✓ Copiadas" : "Copiar instrucciones"}
+        </button>
+      </section>
+
+      <section className="tarjeta space-y-3">
+        <h2 className="font-semibold">2. Pégalas en Claude</h2>
+        <p className="text-sm text-suave">
+          Abre un chat nuevo, pega y envía. Cuando termine, copia toda su respuesta (el bloque de código tiene un botón
+          de copiar).
+        </p>
+        <a href="https://claude.ai/new" target="_blank" rel="noreferrer" className="boton-secundario w-full">
+          Abrir Claude ↗
+        </a>
+      </section>
+
+      <section className="tarjeta space-y-3">
+        <h2 className="font-semibold">3. Pega aquí la respuesta</h2>
+        <textarea
+          className="campo font-mono text-xs"
+          rows={5}
+          placeholder='{ "propuestas": [ … ] }'
+          value={respuesta}
+          onChange={(e) => setRespuesta(e.target.value)}
+        />
+        <button className="boton w-full" onClick={cargar} disabled={!respuesta.trim()}>
+          Ver propuestas
         </button>
         {error && <p className="text-sm text-acento">{error}</p>}
-      </div>
+        {avisos.length > 0 && (
+          <p className="text-xs text-suave">
+            Ignoré ingredientes que no están en el catálogo: {avisos.join(", ")}. Los macros de esas recetas pueden
+            quedar un poco bajos.
+          </p>
+        )}
+      </section>
 
       {propuestas.map((p, i) => (
         <TarjetaPropuesta key={`${p.titulo}-${i}`} propuesta={p} perfil={perfil} despensa={despensa} onElegir={() => elegir(p)} />

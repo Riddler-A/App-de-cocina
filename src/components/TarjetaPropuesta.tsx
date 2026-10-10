@@ -34,7 +34,7 @@ export function TarjetaPropuesta({
     <article className="tarjeta space-y-4">
       <div className="grid grid-cols-2 gap-2">
         {propuesta.recetas.map((r) => (
-          <FotoPlatillo key={r.nombre} busqueda={r.busquedaImagen} nombre={r.nombre} />
+          <FotoPlatillo key={r.nombre} busqueda={r.busquedaImagen} />
         ))}
       </div>
 

@@ -1,11 +1,10 @@
 import { z } from "zod";
-import { IDS_INGREDIENTES } from "./ingredientes";
 
 export const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"] as const;
 export type Dia = (typeof DIAS)[number];
 
-// ── Esquema que la IA debe respetar ───────────────────────────────
-// La IA sólo elige ingredientes de la base (por id) y en gramos; los
+// ── Formato de la respuesta de Claude ──────────────────────────────
+// Claude sólo elige ingredientes de la base (por id) y en gramos; los
 // macros y el costo se calculan en la app, no los inventa el modelo.
 
 export const RecetaSchema = z.object({
@@ -14,17 +13,17 @@ export const RecetaSchema = z.object({
   busquedaImagen: z
     .string()
     .describe("Término corto para buscar una foto del platillo, p. ej. 'tinga de pollo'"),
-  porciones: z.number().int().describe("Número de toppers que salen de esta receta"),
+  porciones: z.number().describe("Número de toppers que salen de esta receta"),
   ingredientes: z.array(
     z.object({
-      id: z.enum(IDS_INGREDIENTES),
+      id: z.string(),
       gramos: z.number().describe("Gramos totales de la receta, en crudo"),
-      nota: z.string().describe("Cómo se usa, p. ej. 'picada fina'. Vacío si no aplica"),
+      nota: z.string().default(""),
     }),
   ),
   pasos: z.array(z.string()),
-  minutosPrep: z.number().int(),
-  minutosCoccion: z.number().int(),
+  minutosPrep: z.number(),
+  minutosCoccion: z.number(),
   congelable: z.boolean(),
   seComeFria: z.boolean().describe("true si sabe bien fría o a temperatura ambiente"),
   comoGuardar: z.string().describe("Cómo porcionar, enfriar y congelar o refrigerar"),
@@ -38,14 +37,15 @@ export const PropuestaSchema = z.object({
     .describe("Qué ingredientes y pasos comparten las recetas para ahorrar tiempo y dinero"),
   recetas: z.array(RecetaSchema).describe("Exactamente 2 recetas"),
   planSesion: z
-    .array(z.object({ minuto: z.number().int(), paso: z.string() }))
+    .array(z.object({ minuto: z.number(), paso: z.string() }))
     .describe("Plan de cocina del domingo en orden, aprovechando quemadores en paralelo"),
-  minutosSesion: z.number().int().describe("Duración total realista de la sesión, incluyendo porcionar"),
+  minutosSesion: z.number().describe("Duración total realista de la sesión, incluyendo porcionar"),
   calendario: z
     .array(
       z.object({
-        dia: z.enum(DIAS),
-        receta: z.number().int().describe("Índice de la receta (0 o 1)"),
+        // Acepta "Miercoles" sin acento.
+        dia: z.preprocess((v) => (v === "Miercoles" ? "Miércoles" : v), z.enum(DIAS)),
+        receta: z.number().describe("Índice de la receta (0 o 1)"),
         guardar: z.enum(["refri", "congelador"]),
         fria: z.boolean().describe("true si ese día se come fría"),
       }),

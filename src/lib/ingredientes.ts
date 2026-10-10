@@ -117,8 +117,6 @@ export const INGREDIENTES_POR_ID: Record<string, Ingrediente> = Object.fromEntri
   INGREDIENTES.map((i) => [i.id, i]),
 );
 
-export const IDS_INGREDIENTES = INGREDIENTES.map((i) => i.id) as [string, ...string[]];
-
 export const ORDEN_SECCIONES: Seccion[] = [
   "Frutas y verduras",
   "Carnes y pollo",
